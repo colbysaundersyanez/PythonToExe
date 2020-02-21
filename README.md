@@ -22,7 +22,6 @@ does not work/closes out instantly:
 def function():
   print("hello world")
   
-function()
 --------------------------------------
 
 Code is still in its infancy; window is primitive, interface is glitchy.
