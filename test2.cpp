@@ -9,11 +9,22 @@
 #include <fstream>
 #include <stdio.h>
 #include <direct.h>
+#include <shellapi.h>
+//#include "stdafx.h"
+#define IDI_ICON1
 #define ID_BTNHI 5
 #define ID_BTNHII 1
 #define ID_BTNHIII 2
 #define ID_BTNHVI 3
 #define noneFuntionID 4
+#define LABELONE 2000
+#define ID_BTNHV 7
+#define ID_CLOSE 9 
+#define ID_MINIMIZE 10 
+
+BOOL isMouseDownOnCloseButton = FALSE;
+BOOL isMouseDownOnMinimizeButton = FALSE;
+BOOL isMouseDownOnDemoButton = FALSE;
 
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -24,7 +35,7 @@ HBITMAP hLogoImage;
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow){
 	BOOL bRet;
-	const wchar_t CLASS_NAME[] = L"Window";
+	const wchar_t CLASS_NAME[] = L"PyToExe";
 	WNDCLASS wc = { };
 	wc.lpfnWndProc = WindowProc;
 	wc.hInstance = hInstance;
@@ -36,10 +47,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
 	HWND hwnd = CreateWindowEx(
 		0,            // Optional window styles.
 		CLASS_NAME,   // Window class
-		L"Window",    // Window text
-		WS_OVERLAPPEDWINDOW, // Window style
+		L"",    // Window text
+		WS_POPUPWINDOW, // Window style //WS_OVERLAPPEDWINDOW
 		// Position/Size
-		300, 300, 600, 400,
+		300, 300,587, 390, //originally 600,400
 
 		NULL,       // Parent window    
 		NULL,       // Menu
@@ -63,10 +74,12 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
 	return 0;
 }
 HWND button;
+HWND pyinstallerButton;
 HWND buttonTwo;
 HWND buttonThree;
 HWND helpButton;
 HWND editWindow;
+HWND attributationText;
 char* fileNameTwo;
 char* nameArray[50];
 wchar_t fileName[100];
@@ -76,6 +89,73 @@ std::vector<_bstr_t> fileNameVector;
 const char* nameFileTypeCh; //originally const char use wchar_t instead
 _bstr_t stringTestingTwo;
 TCHAR word;
+
+void DrawCloseButton(HDC hdc)
+{
+	if (isMouseDownOnCloseButton)
+	{
+		RECT rc;
+		rc.left = 0;
+		rc.top = 0;
+		rc.right = 30;
+		rc.bottom = 30;
+		HBRUSH br = CreateSolidBrush(RGB(200, 30, 30));
+		FillRect(hdc, &rc, br);
+
+		SetBkColor(hdc, RGB(200, 30, 30));
+		SetTextColor(hdc, RGB(255, 255, 255));
+
+		TextOut(hdc, 10, 8, L"X", 1);
+	}
+	else
+	{
+		RECT rc;
+		rc.left = 0;
+		rc.top = 0;
+		rc.right = 30;
+		rc.bottom = 30;
+		HBRUSH br = CreateSolidBrush(RGB(0, 0, 0));
+		FillRect(hdc, &rc, br);
+
+		SetBkColor(hdc, RGB(0, 0, 0));
+		SetTextColor(hdc, RGB(255, 255, 255));
+
+		TextOut(hdc, 10, 8, L"X", 1);
+	}
+
+}
+
+void DrawMinimizeButton(HDC hdc)
+{
+	if (isMouseDownOnMinimizeButton)
+	{
+		RECT rc;
+		rc.left = 0;
+		rc.top = 0;
+		rc.right = 30;
+		rc.bottom = 30;
+		HBRUSH br = CreateSolidBrush(RGB(200, 200, 200));
+		FillRect(hdc, &rc, br);
+
+		SetBkColor(hdc, RGB(0, 0, 0));
+		SetTextColor(hdc, RGB(255, 255, 255));
+		TextOut(hdc, 10, 5, L"_", 1);
+	}
+	else
+	{
+		RECT rc;
+		rc.left = 0;
+		rc.top = 0;
+		rc.right = 30;
+		rc.bottom = 30;
+		HBRUSH br = CreateSolidBrush(RGB(200, 200, 200));
+		FillRect(hdc, &rc, br);
+
+		SetBkColor(hdc, RGB(0, 0, 0));
+		SetTextColor(hdc, RGB(255, 255, 255));
+		TextOut(hdc, 10, 5, L"_", 1);
+	}
+}
 
 void displayFile(char* path) {
 	try {
@@ -136,7 +216,7 @@ void generateSourceFile(HWND hwnd) {
 	system("mkdir C:\\LinkContainerFolder");
 	file.open("C:\\LinkContainerFolder\\linkContainers.SPEC", std::ios::out);
 	file.open("C:\\LinkContainerFolder\\help.SPEC", std::ios::out);
-	MessageBox(NULL, L"File Succesfully Made", L"", MB_OK);
+	//MessageBox(NULL, L"File Succesfully Made", L"", MB_OK);
 	if(!file){ //MessageBox(NULL, L"Error Making File", L"Error", MB_OK); 
 	}
 	else { MessageBox(NULL, L"File Succesfully Made", L"", MB_OK); }
@@ -159,7 +239,7 @@ void convertFiles() {
 				if(SysStringLen(bstr) == 0 || bstr.GetBSTR() == NULL){ MessageBox(NULL, L"running", L"Empty", MB_OK); }
 				else {
 					//MessageBox(NULL, L"running", bstr, MB_OK);
-					system("pyinstaller --onefile \"" + bstr + "\"");
+					system("pyinstaller -c -F --onefile \"" + bstr + "\"");
 				}
 			}
 		}
@@ -169,6 +249,7 @@ void convertFiles() {
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	LRESULT move = NULL;
 	switch (uMsg)
 	{
 	case WM_CREATE: {
@@ -176,19 +257,30 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		button = CreateWindow(L"Button", L"Select File", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 10, 10, 110, 30, hwnd, (HMENU) ID_BTNHI, GetModuleHandle(NULL), NULL);
 		buttonTwo = CreateWindow(L"Button", L"Change To EXE", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 130, 10, 110, 30, hwnd, (HMENU)ID_BTNHII, GetModuleHandle(NULL), NULL);
 		buttonThree = CreateWindow(L"Button", L"Generate Source File", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 250, 10, 150, 30, hwnd, (HMENU)ID_BTNHIII, GetModuleHandle(NULL), NULL);
+		HWND closeButton = CreateWindow(L"Button", L"x", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 553, 7, 22, 22, hwnd, (HMENU)ID_CLOSE, GetModuleHandle(NULL), NULL);
+		HWND minimizeButton = CreateWindow(L"Button", L"-", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 526, 7, 22, 22, hwnd, (HMENU)ID_MINIMIZE, GetModuleHandle(NULL), NULL);
 		editWindow = CreateWindowW(L"edit", L"", WS_VISIBLE | WS_CHILD | ES_MULTILINE | WS_BORDER | ES_AUTOVSCROLL, 10, 50, 565, 300, hwnd, NULL, NULL, NULL);
+		pyinstallerButton = CreateWindow(L"Button", L"pyInstaller Website", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 425, 355, 150, 25, hwnd, (HMENU)ID_BTNHV, GetModuleHandle(NULL), NULL);
 		helpButton = CreateWindow(L"Button", L"?", WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON | BS_TEXT, 410, 10, 40, 30, hwnd, (HMENU)ID_BTNHVI, GetModuleHandle(NULL), NULL);
+		attributationText = CreateWindow(L"STATIC", L"Created using pyinstaller", WS_VISIBLE | WS_CHILD, 10,362,165,16, hwnd, NULL, NULL, NULL,NULL);
 		SendMessage(helpButton, WM_SETFONT, (WPARAM)s_hFont, (LPARAM)MAKELONG(TRUE, 0));
-		//SendMessage(helpButton, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hLogoImage);
-		//HICON hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDR_MAINFRAME));
-		//SendMessage(helpButton, BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
-
+		
 		generateSourceFile(hwnd);
 		break;
 	}
+	case WM_CTLCOLORSTATIC: {
+		HDC hdcStatic = (HDC)wParam;
+		SetTextColor(hdcStatic, RGB(0, 0, 0));
+		SetBkColor(hdcStatic, RGB(255,255,255));
+		return (LRESULT)GetStockObject(NULL_BRUSH);
+	}
+	case WM_SETFONT: {
+		HFONT hFont = CreateFont(5, 0, 0, 0, FW_DONTCARE, FALSE, FALSE, FALSE, ANSI_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,DEFAULT_PITCH | FF_DONTCARE, TEXT("Tahoma"));
+		SendMessage(attributationText, WM_SETFONT, (WPARAM)hFont, TRUE);
+	}
+
 	case WM_COMMAND: {
 		switch (LOWORD(wParam)) {
-			
 			case ID_BTNHI: {
 				openFile(hwnd);
 				//MessageBox(hwnd, L"Box", L"Window", MB_OK);
@@ -223,14 +315,22 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 				displayFile(helpLink);
 				break;
 			}
+			case ID_BTNHV: {
+				//system("C:\\Program Files(x86)\\Google\\Chrome\\Application\\chrome.exe http://google.com");
+				ShellExecute(0, 0, L"https://www.pyinstaller.org/", 0, 0, SW_SHOW);
+			}
+			case ID_CLOSE: {
+				DestroyWindow(hwnd);
+				PostQuitMessage(0);
+			}
+			case ID_MINIMIZE: {
+				SendMessage(hwnd, WM_SYSCOMMAND, SC_MINIMIZE, lParam);
+				break;
+			}
 		}
 		break;
 	}
 					 
-	//case WM_DESTROY:
-		//MessageBox(hwnd, L"Box", L"Quit", MB_OK);
-		//PostQuitMessage(0);
-		//return 0;
 	case WM_CLOSE:
 		if (MessageBox(hwnd, L"Really quit?", L"Exit", MB_OKCANCEL) == IDOK)
 		{
@@ -251,6 +351,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	}
 	return 0;
 
+	case WM_NCHITTEST:
+		RECT rc;
+		POINT pt;
+		GetCursorPos(&pt);
+		GetWindowRect(hwnd, &rc);
+		rc.bottom = rc.bottom - 466;
+		if (pt.x <= rc.right && pt.x >= rc.left && pt.y <= rc.bottom && pt.y >= rc.top)
+		{
+			move = DefWindowProc(hwnd, uMsg, wParam, lParam);
+			if (move == HTCLIENT)
+			{move = HTCAPTION;}
+		}
+		move = HTCAPTION;
+		return move;
+		break;
 	}
 	return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
